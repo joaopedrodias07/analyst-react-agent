@@ -1,0 +1,10 @@
+# requirements.txt
+langchain
+langchain-google-genai
+langchain-groq
+langchain-community
+langgraph
+langsmith
+python-dotenv
+reportlab
+pandas
