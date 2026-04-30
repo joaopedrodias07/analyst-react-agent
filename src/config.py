@@ -18,3 +18,13 @@ llm = ChatGoogleGenerativeAI(
 # temperature=0,
 # google_api_key= os.getenv("GROQ_API_KEY")
 # )
+
+
+def extrair_texto(resposta) -> str:
+    """Extrai o texto da resposta do LLM independente do formato."""
+    content = resposta["messages"][-1].content
+
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        return content[0]["text"]
