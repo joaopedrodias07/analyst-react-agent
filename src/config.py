@@ -4,6 +4,9 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 load_dotenv()
+os.environ["LANGSMITH_TRACING"] = os.getenv("LANGSMITH_TRACING", "false")
+os.environ["LANGSMITH_API_KEY"] = os.getenv("LANGSMITH_API_KEY", "")
+os.environ["LANGSMITH_PROJECT"] = os.getenv("LANGSMITH_PROJECT", "analyst-react-agent")
 
 llm = ChatGoogleGenerativeAI(
     model="gemini-3.1-flash-lite-preview",
