@@ -51,8 +51,7 @@ def exportar_csv(dados_json: str, nome_arquivo: str) -> str:
         os.makedirs("outputs", exist_ok=True)
 
         print(f"TIPO: {type(dados_json)}")
-        print(f"VALOR: {dados_json[:100]}")  # primeiros 100 caracteres
-
+        print(f"VALOR: {dados_json[:100]}")
         df = pd.read_json(StringIO(dados_json))
         caminho = f"outputs/{nome_arquivo}.csv"
         df.to_csv(caminho, index=False)
