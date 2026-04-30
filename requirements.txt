@@ -8,3 +8,6 @@ langsmith
 python-dotenv
 reportlab
 pandas
+plotly
+kaleido
+streamlit
