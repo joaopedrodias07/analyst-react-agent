@@ -7,9 +7,10 @@ from src.tools import (
     gerar_relatorio,
     enviar_email
 )
+import os
 from dotenv import load_dotenv
 load_dotenv()
-'''
+
 # ── TESTE 1: consultar_sql ────────────────────────────────
 print("=== TESTE 1: consultar_sql ===")
 resultado = consultar_sql.invoke({
@@ -70,11 +71,12 @@ resultado = gerar_relatorio.invoke({
     "grafico_path": grafico_path
 })
 print(resultado)
-'''
+
+destinatario = os.getenv("EMAIL_DESTINATARIO")
 # ── TESTE 6: enviar_email ─────────────────────────────────
 print("\n=== TESTE 6: enviar_email ===")
 resultado = enviar_email.invoke({
-    "destinatario": "joaopedrodias.profissional@gmail.com",
+    "destinatario": destinatario,
     "assunto": "Teste do sistema",
     "corpo": "Email de teste do analyst-react-agent.",
 })
