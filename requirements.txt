@@ -3,6 +3,7 @@ langchain
 langchain-google-genai
 langchain-groq
 langchain-community
+langgraph-supervisor
 langgraph
 langsmith
 python-dotenv

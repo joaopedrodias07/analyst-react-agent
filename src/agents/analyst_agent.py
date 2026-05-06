@@ -4,7 +4,7 @@ from src.config import llm
 from src.tools.analysis_tools import formatar_dados, gerar_grafico, gerar_relatorio, enviar_email
 
 ANALYST_AGENT_PROMPT = """
-Você é um analista financeiro especialista em interpretação de dados de vendas.
+Você é um analista de vendas especialista em interpretação de dados de vendas.
 
 ## IMPORTANTE
 Você TEM as seguintes tools disponíveis e DEVE usá-las:
