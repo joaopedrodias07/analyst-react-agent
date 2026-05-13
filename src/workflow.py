@@ -212,12 +212,12 @@ def run_analyst_agent(state: SalesState) -> SalesState:
     5. Email (se pedido)
     """
     user_query = state["user_query"].lower()
-    
+
     # 1. Formatar dados (SEMPRE)
     formatted = formatar_dados.invoke({"dados_json": state["sql_result"]})
     state["formatted_data"] = formatted
     print("📋 Dados formatados")
-    
+
     # 2. Gerar análise textual
     analysis_prompt = f"""
     Você é um analista financeiro sênior. Analise os dados abaixo:
@@ -233,33 +233,45 @@ def run_analyst_agent(state: SalesState) -> SalesState:
     
     Formate valores como R$ X.XXX,XX.
     """
-    
+
     analysis_response = invoke_with_fallback(analysis_prompt)
     if not analysis_response:
         state["final_answer"] = "❌ Falha ao gerar análise. Os dados estão disponíveis."
         state["error"] = "Falha na análise"
         return state
-    
+
     state["analysis_text"] = analysis_response
     print("📝 Análise gerada")
-    
+
     # 3. Gráfico (se pedido EXPLICITAMENTE)
     graph_keywords = ["gráfico", "grafico", "visualização", "visualizacao", "plot", "barras", "pizza", "linha"]
     if any(word in user_query for word in graph_keywords):
-        graph_prompt = f"""
-        Escolha o tipo de gráfico e eixos com base nos dados e pedido.
-        Tipos: linha, barras, pizza, histograma
-        
-        Pedido: {user_query}
-        Colunas disponíveis (primeiras linhas): {formatted[:500]}
-        
-        Retorne APENAS JSON: {{"tipo": "barras", "eixo_x": "nome_coluna", "eixo_y": "nome_coluna", "titulo": "título"}}
-        """
-        
+
+        # Extrai só os nomes das colunas do sql_result, sem passar dados completos ao LLM
+        try:
+            colunas = list(json.loads(state["sql_result"])[0].keys())
+        except Exception:
+            colunas = []
+
+        graph_prompt = f"""Retorne APENAS um objeto JSON, sem explicações, sem código Python, sem markdown.
+
+Formato exigido (preencha com os valores corretos):
+{{"tipo": "barras", "eixo_x": "nome_coluna", "eixo_y": "nome_coluna", "titulo": "titulo do grafico"}}
+
+Tipos válidos: linha, barras, pizza, histograma
+Colunas disponíveis: {colunas}
+Pedido do usuário: {state['user_query']}
+
+JSON:"""
+
         graph_response = invoke_with_fallback(graph_prompt)
         if graph_response:
             try:
-                graph_params = json.loads(graph_response)
+                # Remove blocos de markdown antes de parsear
+                cleaned = re.sub(r'^```(?:json)?\s*\n?', '', graph_response.strip())
+                cleaned = re.sub(r'\n?```\s*$', '', cleaned).strip()
+
+                graph_params = json.loads(cleaned)
                 graph_result = gerar_grafico.invoke({
                     "dados_json": state["sql_result"],
                     "tipo": graph_params["tipo"],
@@ -270,9 +282,12 @@ def run_analyst_agent(state: SalesState) -> SalesState:
                 if "Gráfico salvo em:" in graph_result:
                     state["graph_path"] = graph_result.replace("Gráfico salvo em: ", "")
                     print(f"📊 Gráfico gerado: {state['graph_path']}")
-            except:
-                print("⚠️ Falha ao gerar gráfico")
-    
+                else:
+                    print(f"⚠️ Falha ao gerar gráfico: {graph_result}")
+            except Exception as e:
+                print(f"⚠️ Falha ao parsear parâmetros do gráfico: {e}")
+                print(f"   Resposta recebida: {graph_response[:200]}")
+
     # 4. Relatório PDF (se pedido)
     report_keywords = ["relatório", "relatorio", "pdf"]
     if any(word in user_query for word in report_keywords):
@@ -284,30 +299,41 @@ def run_analyst_agent(state: SalesState) -> SalesState:
         if "Relatório salvo em:" in report_result:
             state["report_path"] = report_result.replace("Relatório salvo em: ", "")
             print(f"📄 Relatório gerado: {state['report_path']}")
-    
+        else:
+            print(f"⚠️ Falha ao gerar relatório: {report_result}")
+
     # 5. Email (se pedido)
     email_keywords = ["email", "e-mail", "enviar por email", "enviar email"]
     if any(word in user_query for word in email_keywords):
-        # Tenta extrair email do prompt
-        email_extract_prompt = f"""
-        Extraia APENAS o endereço de email desta mensagem.
-        Se não houver email, retorne "nao_encontrado".
-        
-        Mensagem: {state['user_query']}
-        """
+        email_extract_prompt = f"""Extraia APENAS o endereço de email desta mensagem.
+Se não houver email, retorne exatamente: nao_encontrado
+
+Mensagem: {state['user_query']}
+
+Email:"""
+
         email_response = invoke_with_fallback(email_extract_prompt)
-        
+
         if email_response and "nao_encontrado" not in email_response.lower():
-            destinatario = email_response.strip()
-            email_result = enviar_email.invoke({
-                "destinatario": destinatario,
-                "assunto": f"Relatório de Análise Financeira",
-                "corpo": analysis_response,
-                "anexo_path": state.get("report_path", "")
-            })
-            state["email_sent"] = "sucesso" in email_result.lower()
-            print(f"📧 Email enviado: {state['email_sent']}")
-    
+            # Valida que é realmente um endereço de email
+            match = re.search(r'[\w.+-]+@[\w-]+\.[a-z]{2,}', email_response)
+            if match:
+                destinatario = match.group(0)
+                email_result = enviar_email.invoke({
+                    "destinatario": destinatario,
+                    "assunto": "Relatório de Análise Financeira",
+                    "corpo": analysis_response,
+                    "anexo_path": state.get("report_path", "")
+                })
+                state["email_sent"] = "sucesso" in email_result.lower()
+                print(f"📧 Email {'enviado' if state['email_sent'] else 'falhou'}: {destinatario}")
+            else:
+                print(f"⚠️ Endereço de email não encontrado na query. Resposta LLM: {email_response}")
+                state["email_sent"] = False
+        else:
+            print("⚠️ Usuário pediu email mas não forneceu um endereço.")
+            state["email_sent"] = False
+
     # Resposta final = análise
     state["final_answer"] = analysis_response
     return state
