@@ -162,61 +162,105 @@ def clean_sql_query(text: str) -> str:
     
     return cleaned.strip()
 
+def fix_sqlite_syntax(query: str) -> str:
+    """Corrige sintaxe PostgreSQL para SQLite automaticamente."""
+    query = re.sub(
+        r"EXTRACT\s*\(\s*YEAR\s+FROM\s+(\w+)\s*\)",
+        r"strftime('%Y', \1)",
+        query, flags=re.IGNORECASE
+    )
+    query = re.sub(
+        r"EXTRACT\s*\(\s*MONTH\s+FROM\s+(\w+)\s*\)",
+        r"strftime('%m', \1)",
+        query, flags=re.IGNORECASE
+    )
+    query = re.sub(
+        r"EXTRACT\s*\(\s*DAY\s+FROM\s+(\w+)\s*\)",
+        r"strftime('%d', \1)",
+        query, flags=re.IGNORECASE
+    )
+    # Remove COPY e comandos de exportação
+    query = re.sub(
+        r"COPY\s*\(.*?\)\s*TO\s*'[^']*'\s*WITH\s*CSV\s*HEADER\s*;?",
+        "", query, flags=re.IGNORECASE | re.DOTALL
+    )
+    return query.strip()
+
+
 def run_sql_agent(state: SalesState) -> SalesState:
     """
     Executa consulta SQL e opcionalmente exporta CSV.
-    Fluxo determinístico: gerar query → executar → (exportar se pedido)
+    Fluxo determinístico: gerar query → corrigir sintaxe → executar → (exportar se pedido)
     """
     # 1. Gerar query SQL
     sql_prompt = f"""
-   Você é um especialista SQL. Gere APENAS a query SQL para a pergunta abaixo.
+    Você é um especialista SQL para SQLite. Gere APENAS a query SQL para a pergunta abaixo.
 
-    IMPORTANTE: 
+    IMPORTANTE:
     - Retorne SOMENTE o código SQL puro
     - NÃO use blocos de código markdown (sem ```sql ou ```)
     - NÃO inclua explicações ou comentários
     - Apenas a query SQL, nada mais
+
+    BANCO DE DADOS: SQLite — siga rigorosamente a sintaxe SQLite.
+
+    SINTAXE OBRIGATÓRIA PARA DATAS NO SQLITE:
+    - Filtrar por ano:  strftime('%Y', data) = '2024'
+    - Filtrar por mês:  strftime('%m', data) = '03'
+    - Filtrar por dia:  strftime('%d', data) = '15'
+
+    EXEMPLOS CORRETOS:
+    -- Vendas de 2024:
+    SELECT * FROM fato_vendas WHERE strftime('%Y', data) = '2024'
+
+    -- Vendas de março de 2024:
+    SELECT * FROM fato_vendas WHERE strftime('%Y', data) = '2024' AND strftime('%m', data) = '03'
+
+    PROIBIDO:
+    - EXTRACT(YEAR FROM ...) → não existe no SQLite
+    - COPY, INTO OUTFILE → exportação é feita pelo sistema
+    - DELETE, UPDATE, DROP
 
     Tabelas disponíveis:
     - fato_vendas: id_venda, id_produto, id_cliente, id_vendedor, data, quantidade, valor_total, desconto
     - dim_produtos: id_produto, nome, categoria, preco_unitario
     - dim_clientes: id_cliente, nome, sexo, idade, email, regiao
     - dim_vendedores: id_vendedor, nome, email, regiao, cargo
-    
+
     Gere APENAS a query SQL para: {state['user_query']}
     Regras:
     - Use JOINs quando precisar de dados de múltiplas tabelas
     - Para "melhor/pior/maior/menor", use ORDER BY + LIMIT
-    - Nunca use DELETE, UPDATE, DROP
-    - Retorne APENAS o código SQL, sem explicações
     """
-    
+
     query_response = invoke_with_fallback(sql_prompt)
     if not query_response:
         state["final_answer"] = "❌ Não consegui gerar a consulta SQL. Tente novamente."
         state["error"] = "Falha ao gerar query"
         return state
-    
+
+    # 2. Limpar e corrigir sintaxe deterministicamente
     query = clean_sql_query(query_response)
+    query = fix_sqlite_syntax(query)
     print(f"📊 Query gerada: {query}")
-    
-    # 2. Executar query
+
+    # 3. Executar query
     result = consultar_sql.invoke({"query": query})
     state["sql_result"] = result
-    
+
     if "ERRO" in result:
         state["final_answer"] = f"❌ {result}"
         state["error"] = result
         return state
-    
-    # 3. Exportar CSV se pedido
+
+    # 4. Exportar CSV se pedido
     if any(word in state["user_query"].lower() for word in ["csv", "exportar", "baixar", "download"]):
         csv_result = exportar_csv.invoke({
             "dados_json": result,
             "nome_arquivo": "consulta"
         })
         state["csv_path"] = csv_result.replace("CSV exportado com sucesso: ", "")
-    
+
     return state
 
 
