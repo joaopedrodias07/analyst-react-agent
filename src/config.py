@@ -3,28 +3,12 @@ from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 import time 
+from langchain_openai import ChatOpenAI
 
 load_dotenv()
 os.environ["LANGSMITH_TRACING"] = os.getenv("LANGSMITH_TRACING", "false")
 os.environ["LANGSMITH_API_KEY"] = os.getenv("LANGSMITH_API_KEY", "")
 os.environ["LANGSMITH_PROJECT"] = os.getenv("LANGSMITH_PROJECT", "analyst-react-agent")
-
-'''
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",
-    temperature=0,
-    google_api_key=os.getenv("GOOGLE_API_KEY")
-)
-
-# Trocarei pelo modelo do groq depois de todos os testes(groq tem um limite menor de tokens)
-from langchain_groq import ChatGroq
-llm = ChatGoogleGenerativeAI(
-model="llama-3.3-70b-versatile",
-temperature=0.2,
-google_api_key= os.getenv("GROQ_API_KEY")
-)
-'''
-from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(
     model="deepseek-chat",
@@ -54,11 +38,18 @@ def invoke_with_fallback(prompt: str, max_retries: int = 3) -> str:
                 print(f"❌ Todas as tentativas falharam.")
                 return None
 
-def extrair_texto(resposta) -> str:
-    """Extrai o texto da resposta do LLM independente do formato."""
-    content = resposta["messages"][-1].content
+'''
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash",
+    temperature=0,
+    google_api_key=os.getenv("GOOGLE_API_KEY")
+)
 
-    if isinstance(content, str):
-        return content
-    elif isinstance(content, list):
-        return content[0]["text"]
+
+from langchain_groq import ChatGroq
+llm = ChatGoogleGenerativeAI(
+model="llama-3.3-70b-versatile",
+temperature=0.2,
+google_api_key= os.getenv("GROQ_API_KEY")
+)
+'''
