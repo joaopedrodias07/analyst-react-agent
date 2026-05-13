@@ -1,25 +1,34 @@
-
 from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage
 load_dotenv()
 
 from src.workflow import workflow
+import uuid
 
 print("🤖 Sistema de Análise de Vendas")
 print("=" * 50)
-print("Exemplos:")
-print("  • 'Quanto vendeu em janeiro?' → consulta SQL")
-print("  • 'Analise as vendas do trimestre' → SQL + análise")
-print("  • 'Gere um relatório em PDF' → SQL + análise + PDF")
-print("  • 'sair' → encerrar")
+print("Digite 'sair' para encerrar ou 'nova conversa' para resetar o histórico.")
 print("=" * 50)
+
+# thread_id identifica a sessão — mesmo id = mesma memória
+thread_id = str(uuid.uuid4())
+config = {"configurable": {"thread_id": thread_id}}
 
 user_query = input("\n📝 Digite sua pergunta: ")
 
 while user_query.lower() != "sair":
+    if user_query.lower() == "nova conversa":
+        thread_id = str(uuid.uuid4())
+        config = {"configurable": {"thread_id": thread_id}}
+        print("🔄 Nova conversa iniciada.")
+        user_query = input("\n📝 Digite sua pergunta: ")
+        continue
+
     try:
-        resultado = workflow.invoke({
-            "messages": [{"role": "user", "content": user_query}]
-        })
+        resultado = workflow.invoke(
+    {"messages": [HumanMessage(content=user_query)]},
+    config=config
+)
         
         print("\n" + "=" * 50)
         print("📌 RESPOSTA:")
@@ -28,7 +37,6 @@ while user_query.lower() != "sair":
         if resultado.get("final_answer"):
             print(resultado["final_answer"])
         
-        # Info adicional
         if resultado.get("csv_path"):
             print(f"\n📁 CSV: {resultado['csv_path']}")
         if resultado.get("graph_path"):

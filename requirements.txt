@@ -2,6 +2,7 @@
 langchain
 langchain-google-genai
 langchain-groq
+langchain-openai
 langchain-community
 langgraph-supervisor
 langgraph

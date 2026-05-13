@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 from io import StringIO
 from langchain_core.tools import tool
+from typing import Optional
 
 DB_PATH = "data/vendas.db"
 
@@ -120,8 +121,9 @@ def gerar_grafico(dados_json: str, tipo: str, titulo: str, eixo_x: str, eixo_y: 
         return f"ERRO ao gerar gráfico: {str(e)}"
 
 
+
 @tool
-def gerar_relatorio(analise: str, titulo: str, grafico_path: str = None) -> str:
+def gerar_relatorio(analise: str, titulo: str, grafico_path: Optional[str] = None) -> str:
     """
     Gera um relatório em PDF com a análise e opcionalmente um gráfico.
     Use quando o usuário pedir um relatório formal ou PDF.
@@ -131,10 +133,30 @@ def gerar_relatorio(analise: str, titulo: str, grafico_path: str = None) -> str:
         titulo: título do relatório
         grafico_path: caminho do gráfico gerado (opcional)
     """
+
     try:
+        import re
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+
+        def markdown_para_elementos(texto: str, styles, elementos: list):
+            for linha in texto.split("\n"):
+                linha = linha.strip()
+                if not linha:
+                    elementos.append(Spacer(1, 6))
+                elif linha.startswith("### "):
+                    elementos.append(Paragraph(linha[4:], styles["Heading3"]))
+                elif linha.startswith("## "):
+                    elementos.append(Paragraph(linha[3:], styles["Heading2"]))
+                elif linha.startswith("* ") or linha.startswith("- "):
+                    elementos.append(Paragraph(f"• {linha[2:]}", styles["Normal"]))
+                elif linha.startswith("**") and linha.endswith("**"):
+                    elementos.append(Paragraph(f"<b>{linha[2:-2]}</b>", styles["Normal"]))
+                else:
+                    linha = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', linha)
+                    elementos.append(Paragraph(linha, styles["Normal"]))
+                elementos.append(Spacer(1, 4))
 
         os.makedirs("outputs", exist_ok=True)
         nome_arquivo = f"outputs/relatorio_{uuid.uuid4().hex[:8]}.pdf"
@@ -145,10 +167,7 @@ def gerar_relatorio(analise: str, titulo: str, grafico_path: str = None) -> str:
         elementos.append(Paragraph(titulo, styles["Title"]))
         elementos.append(Spacer(1, 20))
 
-        for paragrafo in analise.split("\n"):
-            if paragrafo.strip():
-                elementos.append(Paragraph(paragrafo, styles["Normal"]))
-                elementos.append(Spacer(1, 8))
+        markdown_para_elementos(analise, styles, elementos)
 
         if grafico_path and os.path.exists(grafico_path):
             elementos.append(Spacer(1, 20))
@@ -158,7 +177,6 @@ def gerar_relatorio(analise: str, titulo: str, grafico_path: str = None) -> str:
         return f"Relatório salvo em: {nome_arquivo}"
     except Exception as e:
         return f"ERRO ao gerar relatório: {str(e)}"
-
 
 @tool
 def enviar_email(destinatario: str, assunto: str, corpo: str, anexo_path: str = "") -> str:

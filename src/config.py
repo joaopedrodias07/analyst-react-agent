@@ -9,19 +9,29 @@ os.environ["LANGSMITH_TRACING"] = os.getenv("LANGSMITH_TRACING", "false")
 os.environ["LANGSMITH_API_KEY"] = os.getenv("LANGSMITH_API_KEY", "")
 os.environ["LANGSMITH_PROJECT"] = os.getenv("LANGSMITH_PROJECT", "analyst-react-agent")
 
+'''
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash-lite",
+    model="gemini-2.0-flash",
     temperature=0,
     google_api_key=os.getenv("GOOGLE_API_KEY")
 )
 
 # Trocarei pelo modelo do groq depois de todos os testes(groq tem um limite menor de tokens)
-# from langchain_groq import ChatGroq
-# llm = ChatGoogleGenerativeAI(
-# model="llama-3.3-70b-versatile",
-# temperature=0,
-# google_api_key= os.getenv("GROQ_API_KEY")
-# )
+from langchain_groq import ChatGroq
+llm = ChatGoogleGenerativeAI(
+model="llama-3.3-70b-versatile",
+temperature=0.2,
+google_api_key= os.getenv("GROQ_API_KEY")
+)
+'''
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(
+    model="deepseek-chat",
+    temperature=0.1,
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://api.deepseek.com"
+)
 
 @retry(
     stop=stop_after_attempt(3),
