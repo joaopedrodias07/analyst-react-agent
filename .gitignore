@@ -1,5 +1,4 @@
 .env
-data/
 outputs/
 venv/
 __pycache__/
