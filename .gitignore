@@ -1,5 +1,10 @@
 .env
+data/
+outputs/
 venv/
 __pycache__/
 *.pyc
-outputs/*.pdf
+*.png
+*.pdf
+*.csv
+.langgraph_cache
