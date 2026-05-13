@@ -440,16 +440,26 @@ Email:"""
 
 def prepare_final_response(state: SalesState) -> SalesState:
     if state.get("final_answer"):
-        # Salva resposta final como AIMessage no histórico
         state["messages"] = [AIMessage(content=state["final_answer"])]
         return state
-    
+
     if state["intention"] == "sql_only":
         dados = state.get("sql_result", "Sem dados")
-        state["final_answer"] = f"📊 **Resultado da consulta:**\n\n{dados}"
+
+        formato_prompt = f"""Você é um assistente de análise de vendas.
+Formate os dados abaixo de forma clara e legível para o usuário, em português.
+Use tabelas, listas ou texto corrido conforme o que fizer mais sentido para os dados.
+Formate valores monetários como R$ X.XXX,XX.
+NÃO faça análises ou recomendações, apenas apresente os dados de forma organizada.
+
+Dados: {dados}
+Pergunta original do usuário: {state['user_query']}
+"""
+        resposta_formatada = invoke_with_fallback(formato_prompt)
+        state["final_answer"] = resposta_formatada or dados
     else:
         state["final_answer"] = "✅ Processo concluído."
-    
+
     state["messages"] = [AIMessage(content=state["final_answer"])]
     return state
 
