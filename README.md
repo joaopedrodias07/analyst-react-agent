@@ -15,6 +15,7 @@ AI-powered conversational agent that analyzes sales data through natural languag
 
 The agent uses a deterministic intent classifier instead of an LLM supervisor, avoiding infinite loops common in multi-agent architectures.
 
+````
 User Query
 │
 ▼
@@ -23,6 +24,7 @@ Intent Classifier
 ├── general    → Direct LLM response
 ├── sql_only   → SQL query → Formatted response
 └── analysis   → SQL query → Analysis → (Chart) → (PDF) → (Email)
+````
 
 ## Project Structure
 
@@ -80,9 +82,6 @@ Edit `.env` with your credentials:
 DEEPSEEK_API_KEY=your_key_here
 EMAIL_REMETENTE=your_email@gmail.com
 EMAIL_SENHA=your_app_password
-LANGSMITH_TRACING=false
-LANGSMITH_API_KEY=
-LANGSMITH_PROJECT=analyst-react-agent
 
 **5. Create the database**
 ```bash
