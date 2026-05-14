@@ -1,6 +1,6 @@
 # 🤖 Analyst Agent — Sales Analysis Agent
 
-AI-powered conversational agent that analyzes sales data through natural language. Built with LangGraph and DeepSeek.
+AI-powered conversational agent that analyzes sales data through natural language. Built with LangGraph and LangChain.
 
 ## Features
 
